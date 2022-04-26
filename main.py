@@ -8,12 +8,12 @@ import os
 faceCascade = cv.CascadeClassifier('haarcascade_frontalface_default.xml')
 vid = cv.VideoCapture(0)
 
-saved_img = None
+saved_image = None
 
 
-def showResult(img, lbl):
+def showResult(image, lbl):
     plt.figure(figsize=(12, 12))
-    plt.imshow(img, cmap='gray')
+    plt.imshow(image, cmap='gray')
     plt.title(lbl)
     plt.axis('off')
     plt.show()
@@ -60,7 +60,7 @@ while(True):
         scaleFactor=1.2,
         minNeighbors=5,
     )
-
+    percentage = 0
     # if there face create rectangle
     for face_rect in faces:
         x, y, w, h = face_rect
@@ -75,27 +75,87 @@ while(True):
     cv.imshow('frame', frame)
 
     # if 'q' quit
-    if cv.waitKey(1) & 0xFF == ord(' '):
+    if (cv.waitKey(1) & 0xFF == ord(' ')):
         date_now = datetime.now()
         foldername = date_now.strftime("image_%d-%m-%Y-%H%M%S.jpg")
         path = 'images/' + foldername
         os.makedirs(path)
-        filename = "img.jpg"
+        filename = "image.jpg"
         cv.imwrite(os.path.join(path, filename), frame)
         vid.release()
-        saved_img = cv.imread(path + '/' + filename, cv.IMREAD_ANYCOLOR)
+        saved_image = cv.imread(path + '/' + filename, cv.IMREAD_ANYCOLOR)
         break
 
 
-saved_img_gray = cv.cvtColor(saved_img, cv.COLOR_BGR2GRAY)
+saved_image_gray = cv.cvtColor(saved_image, cv.COLOR_BGR2GRAY)
 
 # blur
-blur = cv.blur(saved_img, (10, 10))
+blur = cv.blur(saved_image, (10, 10))
 converted_blur = cv.cvtColor(blur, cv.COLOR_BGR2RGB)
 showResult(converted_blur, "blurried")
 
 # canny (edge processing)
-canny_050100 = cv.Canny(saved_img_gray, 50, 100)
+canny_050100 = cv.Canny(saved_image_gray, 50, 100)
 showResult(canny_050100, "Cannied")
+
+
+# clahe
+clahe = cv.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
+cequ_gray = clahe.apply(saved_image_gray)
+
+# threshold the clahe
+_, threshold = cv.threshold(cequ_gray, 127, 255, cv.THRESH_BINARY)
+
+# showResult(threshold, "Threshold")
+
+# shape detector (from threshold)
+shape = saved_image.copy()
+
+_, contours, _ = cv.findContours(
+    threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
+)
+
+i = 0
+for contour in contours:
+    if i == 0:
+        i = 1
+        continue
+
+    if i == 10:
+        break
+
+    approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
+    cv.drawContours(shape, [contour], 0, (0, 0, 0), 3)
+    M = cv.moments(contour)
+    if M['m00'] != 0.0:
+        x = int(M['m10']/M['m00'])
+        y = int(M['m01']/M['m00'])
+
+    if len(approx) == 3:
+        cv.putText(shape, 'Triangle', (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    elif len(approx) == 4:
+        cv.putText(shape, 'Quadrilateral', (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    elif len(approx) == 5:
+        cv.putText(shape, 'Pentagon', (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    elif len(approx) == 6:
+        cv.putText(shape, 'Hexagon', (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+
+    else:
+        cv.putText(shape, 'circle', (x, y),
+                   cv.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+    i += 1
+
+
+# shape detector
+
+converted_shape = cv.cvtColor(shape, cv.COLOR_BGR2RGB)
+showResult(converted_shape, "Shape")
 
 cv.destroyAllWindows()
