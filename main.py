@@ -11,14 +11,6 @@ vid = cv.VideoCapture(0)
 saved_image = None
 
 
-def showResult(image, lbl):
-    plt.figure(figsize=(12, 12))
-    plt.imshow(image, cmap='gray')
-    plt.title(lbl)
-    plt.axis('off')
-    plt.show()
-
-
 # TRAIN
 train_path = 'train'
 train_dir = os.listdir(train_path)
@@ -87,16 +79,28 @@ while(True):
         break
 
 
+def showResult(nrow, ncol, res_stack):
+    plt.figure(figsize=(12, 12))
+    for idx, (lbl, img) in enumerate(res_stack):
+        plt.subplot(nrow, ncol, idx + 1)
+        plt.imshow(img, cmap='gray')
+        plt.title(lbl)
+        plt.axis('off')
+        print(path, filename)
+        plt.savefig(os.path.join(path, filename))
+    plt.show()
+
+
 saved_image_gray = cv.cvtColor(saved_image, cv.COLOR_BGR2GRAY)
 
 # blur
 blur = cv.blur(saved_image, (10, 10))
 converted_blur = cv.cvtColor(blur, cv.COLOR_BGR2RGB)
-showResult(converted_blur, "blurried")
+# showResult(converted_blur, "blurried")
 
 # canny (edge processing)
 canny_050100 = cv.Canny(saved_image_gray, 50, 100)
-showResult(canny_050100, "Cannied")
+# showResult(canny_050100, "Cannied")
 
 
 # clahe
@@ -108,6 +112,8 @@ _, threshold = cv.threshold(cequ_gray, 127, 255, cv.THRESH_BINARY)
 
 # showResult(threshold, "Threshold")
 
+# showResult(threshold, "Threshold")
+
 # shape detector (from threshold)
 shape = saved_image.copy()
 
@@ -115,13 +121,17 @@ _, contours, _ = cv.findContours(
     threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
 )
 
+
+print(contours)
 i = 0
+
+
 for contour in contours:
     if i == 0:
         i = 1
         continue
 
-    if i == 10:
+    if i == 30:
         break
 
     approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
@@ -154,8 +164,12 @@ for contour in contours:
 
 
 # shape detector
-
 converted_shape = cv.cvtColor(shape, cv.COLOR_BGR2RGB)
-showResult(converted_shape, "Shape")
+
+labels = ['Blur', 'Canny', 'Threshold', 'Shape']
+images = [converted_blur, canny_050100, threshold, converted_shape]
+
+showResult(2, 2, zip(labels, images))
+
 
 cv.destroyAllWindows()
