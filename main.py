@@ -86,8 +86,7 @@ def showResult(nrow, ncol, res_stack):
         plt.imshow(img, cmap='gray')
         plt.title(lbl)
         plt.axis('off')
-        print(path, filename)
-        plt.savefig(os.path.join(path, filename))
+        plt.savefig(os.path.join(path, "result.jpg"))
     plt.show()
 
 
@@ -100,6 +99,7 @@ converted_blur = cv.cvtColor(blur, cv.COLOR_BGR2RGB)
 
 # canny (edge processing)
 canny_050100 = cv.Canny(saved_image_gray, 50, 100)
+
 # showResult(canny_050100, "Cannied")
 
 
@@ -122,7 +122,6 @@ _, contours, _ = cv.findContours(
 )
 
 
-print(contours)
 i = 0
 
 
