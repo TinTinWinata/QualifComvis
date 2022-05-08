@@ -56,12 +56,18 @@ while(True):
     # if there face create rectangle
     for face_rect in faces:
         x, y, w, h = face_rect
-        cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        mask = np.zeros((h, w), np.uint8)
+
+        # create rectangle and put text
+        image = cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
         face_image = gray[y: y + w, x: x + h]
         resIdx, percentage = face_recognizer.predict(face_image)
         text = f'{name_list[resIdx]} {str(int(percentage))}%'
         cv.putText(frame, text, (x, y - 10),
                    cv.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 0), 1)
+
+        # blur the images
+        image[y:y+h, x:x+w] = cv.medianBlur(image[y:y+h, x:x+w], 35)
 
     # show frame
     cv.imshow('frame', frame)
@@ -100,19 +106,15 @@ converted_blur = cv.cvtColor(blur, cv.COLOR_BGR2RGB)
 # canny (edge processing)
 canny_050100 = cv.Canny(saved_image_gray, 50, 100)
 
-# showResult(canny_050100, "Cannied")
-
-
 # clahe
 clahe = cv.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
 cequ_gray = clahe.apply(saved_image_gray)
 
+# median blur
+median_blur = cv.medianBlur(cequ_gray, 35)
+
 # threshold the clahe
-_, threshold = cv.threshold(cequ_gray, 127, 255, cv.THRESH_BINARY)
-
-# showResult(threshold, "Threshold")
-
-# showResult(threshold, "Threshold")
+_, threshold = cv.threshold(median_blur, 127, 255, cv.THRESH_BINARY)
 
 # shape detector (from threshold)
 shape = saved_image.copy()
@@ -121,17 +123,12 @@ _, contours, _ = cv.findContours(
     threshold, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE
 )
 
-
 i = 0
-
 
 for contour in contours:
     if i == 0:
         i = 1
         continue
-
-    if i == 30:
-        break
 
     approx = cv.approxPolyDP(contour, 0.01 * cv.arcLength(contour, True), True)
     cv.drawContours(shape, [contour], 0, (0, 0, 0), 3)
