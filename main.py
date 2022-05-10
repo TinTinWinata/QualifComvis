@@ -39,8 +39,12 @@ face_recognizer.train(face_list, np.array(class_list))
 while(True):
     # read video
     ret, frame = vid.read()
+
+    # save original frame
+    edited_frame = frame.copy()
+
     # get gray color
-    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(edited_frame, cv.COLOR_BGR2GRAY)
 
     # Image Processing (clahe contrast)
     clahe = cv.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
@@ -56,23 +60,28 @@ while(True):
     # if there face create rectangle
     for face_rect in faces:
         x, y, w, h = face_rect
-        mask = np.zeros((h, w), np.uint8)
+
+        # blur the image (mask face)
+        edited_frame = cv.medianBlur(edited_frame, 35)
+        cropped_image = frame[y:y+w, x:x+h]
+        edited_frame[y:y+h, x:x+w] = cropped_image
 
         # create rectangle and put text
-        image = cv.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 1)
+        image = cv.rectangle(edited_frame, (x, y),
+                             (x + w, y + h), (0, 255, 0), 1)
         face_image = gray[y: y + w, x: x + h]
         resIdx, percentage = face_recognizer.predict(face_image)
         text = f'{name_list[resIdx]} {str(int(percentage))}%'
-        cv.putText(frame, text, (x, y - 10),
+        cv.putText(edited_frame, text, (x, y - 10),
                    cv.FONT_HERSHEY_PLAIN, 1.5, (0, 255, 0), 1)
 
         # blur the images
-        image[y:y+h, x:x+w] = cv.medianBlur(image[y:y+h, x:x+w], 35)
+        # image[y:y+h, x:x+w] = cv.medianBlur(image[y:y+h, x:x+w], 35)
 
     # show frame
-    cv.imshow('frame', frame)
+    cv.imshow('frame', edited_frame)
 
-    # if 'q' quit
+    # if ' ' its saved
     if (cv.waitKey(1) & 0xFF == ord(' ')):
         date_now = datetime.now()
         foldername = date_now.strftime("image_%d-%m-%Y-%H%M%S.jpg")
@@ -109,6 +118,13 @@ canny_050100 = cv.Canny(saved_image_gray, 50, 100)
 # clahe
 clahe = cv.createCLAHE(clipLimit=4.0, tileGridSize=(8, 8))
 cequ_gray = clahe.apply(saved_image_gray)
+
+# edge detection
+harris_corner = cv.cornerHarris(saved_image_gray, 2, 5, 0.04)
+edge_detection = saved_image.copy()
+edge_detection[harris_corner > 0.01 * harris_corner.max()] = [0, 0, 255]
+converted_edge_detection = cv.cvtColor(edge_detection, cv.COLOR_BGR2RGB)
+
 
 # median blur
 median_blur = cv.medianBlur(cequ_gray, 35)
@@ -162,8 +178,9 @@ for contour in contours:
 # shape detector
 converted_shape = cv.cvtColor(shape, cv.COLOR_BGR2RGB)
 
-labels = ['Blur', 'Canny', 'Threshold', 'Shape']
-images = [converted_blur, canny_050100, threshold, converted_shape]
+labels = ['Blur', 'Canny', 'Edge', 'Shape']
+images = [converted_blur, canny_050100,
+          converted_edge_detection, converted_shape]
 
 showResult(2, 2, zip(labels, images))
 
